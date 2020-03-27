@@ -18,5 +18,5 @@ geomag: geomag.o
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS)
 
 clean:
-	rm -f geomag
+	rm -f geomag *.o
 

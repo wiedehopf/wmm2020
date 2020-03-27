@@ -48,6 +48,8 @@ int my_isnan(double d)
   return (d != d);              /* IEEE: only NaN is not equal to itself */
 }
 
+char **wmm_lines;
+int wmm_index;
 
 #define NaN log(-1.0)
 
@@ -64,9 +66,9 @@ int main()
   static double ati, adec, adip;
   static double alt, time, dec, dip, ti, gv;
   static double time1, dec1, dip1, ti1;
-  static double time2, dec2, dip2, ti2;
+  static double dec2, dip2, ti2;
   char answer, ans;
-  char decd[7], dipd[7],d_str[81],modl[20];
+  char decd[7], dipd[7],modl[20];
   char goodbye[81];
   double x1,x2,y1,y2,z1,z2,h1,h2;
   double ax,ay,az,ah;
@@ -75,23 +77,123 @@ int main()
   double epochrange = 5.0;
   double warn_H_val, warn_H_strong_val;
   double dmin, imin, ddeg, ideg;
-  FILE *wmmtemp;
 
-  wmmtemp = fopen("WMM.COF","r");
-  if (wmmtemp == NULL) 
-    {
-      fprintf(stderr, "Error opening model file WMM.COF\n");
-      exit(1);
+    // hard code WMM2020, this can easily enough be replaced
+    // i don't like having to read a file, better to have the data in the source code.
+    // when replacing this, make sure to add \n\ at the end of each line to the text from the WMM.COF
+
+    char *wmm_string = strdup("\
+    2020.0            WMM-2020        12/10/2019\n\
+  1  0  -29404.5       0.0        6.7        0.0\n\
+  1  1   -1450.7    4652.9        7.7      -25.1\n\
+  2  0   -2500.0       0.0      -11.5        0.0\n\
+  2  1    2982.0   -2991.6       -7.1      -30.2\n\
+  2  2    1676.8    -734.8       -2.2      -23.9\n\
+  3  0    1363.9       0.0        2.8        0.0\n\
+  3  1   -2381.0     -82.2       -6.2        5.7\n\
+  3  2    1236.2     241.8        3.4       -1.0\n\
+  3  3     525.7    -542.9      -12.2        1.1\n\
+  4  0     903.1       0.0       -1.1        0.0\n\
+  4  1     809.4     282.0       -1.6        0.2\n\
+  4  2      86.2    -158.4       -6.0        6.9\n\
+  4  3    -309.4     199.8        5.4        3.7\n\
+  4  4      47.9    -350.1       -5.5       -5.6\n\
+  5  0    -234.4       0.0       -0.3        0.0\n\
+  5  1     363.1      47.7        0.6        0.1\n\
+  5  2     187.8     208.4       -0.7        2.5\n\
+  5  3    -140.7    -121.3        0.1       -0.9\n\
+  5  4    -151.2      32.2        1.2        3.0\n\
+  5  5      13.7      99.1        1.0        0.5\n\
+  6  0      65.9       0.0       -0.6        0.0\n\
+  6  1      65.6     -19.1       -0.4        0.1\n\
+  6  2      73.0      25.0        0.5       -1.8\n\
+  6  3    -121.5      52.7        1.4       -1.4\n\
+  6  4     -36.2     -64.4       -1.4        0.9\n\
+  6  5      13.5       9.0       -0.0        0.1\n\
+  6  6     -64.7      68.1        0.8        1.0\n\
+  7  0      80.6       0.0       -0.1        0.0\n\
+  7  1     -76.8     -51.4       -0.3        0.5\n\
+  7  2      -8.3     -16.8       -0.1        0.6\n\
+  7  3      56.5       2.3        0.7       -0.7\n\
+  7  4      15.8      23.5        0.2       -0.2\n\
+  7  5       6.4      -2.2       -0.5       -1.2\n\
+  7  6      -7.2     -27.2       -0.8        0.2\n\
+  7  7       9.8      -1.9        1.0        0.3\n\
+  8  0      23.6       0.0       -0.1        0.0\n\
+  8  1       9.8       8.4        0.1       -0.3\n\
+  8  2     -17.5     -15.3       -0.1        0.7\n\
+  8  3      -0.4      12.8        0.5       -0.2\n\
+  8  4     -21.1     -11.8       -0.1        0.5\n\
+  8  5      15.3      14.9        0.4       -0.3\n\
+  8  6      13.7       3.6        0.5       -0.5\n\
+  8  7     -16.5      -6.9        0.0        0.4\n\
+  8  8      -0.3       2.8        0.4        0.1\n\
+  9  0       5.0       0.0       -0.1        0.0\n\
+  9  1       8.2     -23.3       -0.2       -0.3\n\
+  9  2       2.9      11.1       -0.0        0.2\n\
+  9  3      -1.4       9.8        0.4       -0.4\n\
+  9  4      -1.1      -5.1       -0.3        0.4\n\
+  9  5     -13.3      -6.2       -0.0        0.1\n\
+  9  6       1.1       7.8        0.3       -0.0\n\
+  9  7       8.9       0.4       -0.0       -0.2\n\
+  9  8      -9.3      -1.5       -0.0        0.5\n\
+  9  9     -11.9       9.7       -0.4        0.2\n\
+ 10  0      -1.9       0.0        0.0        0.0\n\
+ 10  1      -6.2       3.4       -0.0       -0.0\n\
+ 10  2      -0.1      -0.2       -0.0        0.1\n\
+ 10  3       1.7       3.5        0.2       -0.3\n\
+ 10  4      -0.9       4.8       -0.1        0.1\n\
+ 10  5       0.6      -8.6       -0.2       -0.2\n\
+ 10  6      -0.9      -0.1       -0.0        0.1\n\
+ 10  7       1.9      -4.2       -0.1       -0.0\n\
+ 10  8       1.4      -3.4       -0.2       -0.1\n\
+ 10  9      -2.4      -0.1       -0.1        0.2\n\
+ 10 10      -3.9      -8.8       -0.0       -0.0\n\
+ 11  0       3.0       0.0       -0.0        0.0\n\
+ 11  1      -1.4      -0.0       -0.1       -0.0\n\
+ 11  2      -2.5       2.6       -0.0        0.1\n\
+ 11  3       2.4      -0.5        0.0        0.0\n\
+ 11  4      -0.9      -0.4       -0.0        0.2\n\
+ 11  5       0.3       0.6       -0.1       -0.0\n\
+ 11  6      -0.7      -0.2        0.0        0.0\n\
+ 11  7      -0.1      -1.7       -0.0        0.1\n\
+ 11  8       1.4      -1.6       -0.1       -0.0\n\
+ 11  9      -0.6      -3.0       -0.1       -0.1\n\
+ 11 10       0.2      -2.0       -0.1        0.0\n\
+ 11 11       3.1      -2.6       -0.1       -0.0\n\
+ 12  0      -2.0       0.0        0.0        0.0\n\
+ 12  1      -0.1      -1.2       -0.0       -0.0\n\
+ 12  2       0.5       0.5       -0.0        0.0\n\
+ 12  3       1.3       1.3        0.0       -0.1\n\
+ 12  4      -1.2      -1.8       -0.0        0.1\n\
+ 12  5       0.7       0.1       -0.0       -0.0\n\
+ 12  6       0.3       0.7        0.0        0.0\n\
+ 12  7       0.5      -0.1       -0.0       -0.0\n\
+ 12  8      -0.2       0.6        0.0        0.1\n\
+ 12  9      -0.5       0.2       -0.0       -0.0\n\
+ 12 10       0.1      -0.9       -0.0       -0.0\n\
+ 12 11      -1.1      -0.0       -0.0        0.0\n\
+ 12 12      -0.3       0.5       -0.1       -0.1\n\
+999999999999999999999999999999999999999999999999\n\
+999999999999999999999999999999999999999999999999\n\
+");
+
+    wmm_lines = malloc(sizeof(char*) * 256);
+    wmm_index = 0;
+    wmm_lines[wmm_index] = strtok(wmm_string, "\n");
+    while (wmm_lines[wmm_index]) {
+        wmm_index++;
+        wmm_lines[wmm_index] = strtok(NULL, "\n");
     }
 
-  fgets(d_str, 80, wmmtemp);
-  if (sscanf(d_str,"%lf%s",&epochlowlim,modl) < 2) 
-   {
-     fprintf(stderr, "Invalid header in model file WMM.COF\n");
-     exit(1);
-   }
 
-  fclose(wmmtemp);
+    if (wmm_lines[0] == NULL || sscanf(wmm_lines[0],"%lf%s",&epochlowlim,modl) < 2)
+    {
+        fprintf(stderr, "Invalid header in model wmm_string in geomag.c\n");
+        exit(1);
+    }
+
+
   strcpy (goodbye,"\n -- End of WMM Point Calculation Program -- \n\n");
   ans = geomag_introduction(epochlowlim);
   
@@ -100,6 +202,14 @@ int main()
       
 /* INITIALIZE GEOMAG ROUTINE */
       
+      maxdeg = 12;
+      warn_H = 0;
+      warn_H_val = 99999.0;
+      warn_H_strong = 0;
+      warn_H_strong_val = 99999.0;
+      warn_P = 0;
+
+      geomag(&maxdeg);
     S1:
 
       maxdeg = 12;
@@ -109,7 +219,6 @@ int main()
       warn_H_strong_val = 99999.0;
       warn_P = 0;
 
-      geomag(&maxdeg);
       
       
       printf("\n\n\nENTER LATITUDE IN DECIMAL DEGREES ");
@@ -142,7 +251,6 @@ int main()
       time = time1 + 1.0;
       
       geomg1(alt,dlat,dlon,time,&dec,&dip,&ti,&gv);
-      time2 = time;
       dec2 = dec;
       dip2 = dip;
       ti2 = ti;
@@ -326,21 +434,13 @@ static void E0000(int IENTRY, int *maxdeg, double alt, double glat, double glon,
     olat,olon,dt,rlon,rlat,srlon,srlat,crlon,crlat,srlat2,
     crlat2,q,q1,q2,ct,st,r2,r,d,ca,sa,aor,ar,br,bt,bp,bpp,
     par,temp1,temp2,parp,bx,by,bz,bh;
-  static char model[20], c_str[81], c_new[5];
+  static char model[20], c_new[5];
   static double *p = snorm;
   char answer;
   
-  FILE *wmmdat;
-
   switch(IENTRY){case 0: goto GEOMAG; case 1: goto GEOMG1;}
   
  GEOMAG:
-  wmmdat = fopen("WMM.COF","r");
-  if (wmmdat == NULL) 
-    {
-      fprintf(stderr, "Error opening model file WMM.COF\n");
-      exit(1);
-    }
   
 /* INITIALIZE CONSTANTS */
   maxord = *maxdeg;
@@ -361,31 +461,33 @@ static void E0000(int IENTRY, int *maxdeg, double alt, double glat, double glon,
   c[0][0] = 0.0;
   cd[0][0] = 0.0;
   
-  fgets(c_str, 80, wmmdat);
-  if (sscanf(c_str,"%lf%s",&epoch,model) < 2) 
+    wmm_index = 0;
+  if (wmm_lines[wmm_index] == NULL || sscanf(wmm_lines[wmm_index],"%lf%s",&epoch,model) < 2) 
    {
-       fprintf(stderr, "Invalid header in model file WMM.COF\n");
+       fprintf(stderr, "Invalid header in model wmm_string in geomag.c\n");
        exit(1);
    }
 
  S3:
-  if (fgets(c_str, 80, wmmdat) == NULL) goto S4;
+  wmm_index++;
+  if (wmm_lines[wmm_index] == NULL) goto S4;
 
 /* CHECK FOR LAST LINE IN FILE */
-  for (i=0; i<4 && (c_str[i] != '\0'); i++)
+  for (i=0; i<4 && (wmm_lines[wmm_index][i] != '\0'); i++)
     {
-      c_new[i] = c_str[i];
+      c_new[i] = wmm_lines[wmm_index][i];
       c_new[i+1] = '\0';
     }
   icomp = strcmp("9999", c_new);
   if (icomp == 0) goto S4;
 /* END OF FILE NOT ENCOUNTERED, GET VALUES */
-  sscanf(c_str,"%d%d%lf%lf%lf%lf",&n,&m,&gnm,&hnm,&dgnm,&dhnm);
+  sscanf(wmm_lines[wmm_index], "%d%d%lf%lf%lf%lf",&n,&m,&gnm,&hnm,&dgnm,&dhnm);
 
   if (n > maxord) goto S4;
   if (m > n || m < 0.0) 
     {
-      fprintf(stderr, "Corrupt record in model file WMM.COF\n");
+        fprintf(stderr, "%d\n", wmm_index);
+      fprintf(stderr, "Corrupt record in model wmm_string in geomag.c\n");
       exit(1);
     }
 
@@ -429,7 +531,6 @@ static void E0000(int IENTRY, int *maxdeg, double alt, double glat, double glon,
   k[1][1] = 0.0;
   
   otime = oalt = olat = olon = -1000.0;
-  fclose(wmmdat);
   return;
   
 /*************************************************************************/
