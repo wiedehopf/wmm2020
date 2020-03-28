@@ -1,5 +1,9 @@
+
+// March 2020: Made to work as a small and easy to use library for GNU/Linux C programs by M. Wirth
+// Original notes provided below
 /* PROGRAM MAGPOINT (GEOMAG DRIVER) */
 /************************************************************************
+
      Contact Information
 
      Software and Model Support
@@ -59,16 +63,18 @@ static int my_isnan(double d)
     return (d != d);              /* IEEE: only NaN is not equal to itself */
 }
 
-static void E0000(int IENTRY, int *maxdeg, double alt,double glat,double glon, double time, double *dec, double *dip, double *ti, double *gv);
-static void geomag_E0_init(int *maxdeg);
+static int geomag_E0_init(int *maxdeg);
 static char geomag_introduction(double epochlowlim);
 
-void geomag_destroy() {
+int geomag_destroy() {
     free(wmm_lines);
+    wmm_lines = NULL;
     free(wmm_string);
+    wmm_string = NULL;
+    return 0;
 }
 
-void geomag_init()
+int geomag_init()
 {
 
     // hard code WMM2020, this can easily enough be replaced
@@ -184,18 +190,18 @@ void geomag_init()
     if (wmm_lines[0] == NULL || sscanf(wmm_lines[0],"%lf%s",&epochlowlim,modl) < 2)
     {
         fprintf(stderr, "Invalid header in model wmm_string in geomag.c\n");
-        exit(1);
+        return -1;
     }
 
     /* INITIALIZE GEOMAG ROUTINE */
 
     maxdeg = 12;
-    geomag_E0_init(&maxdeg);
+    return geomag_E0_init(&maxdeg);
 }
 
 /*************************************************************************/
 
-static void E0000(int IENTRY, int *maxdeg, double alt, double glat, double glon, double time, double *dec, double *dip, double *ti, double *gv)
+static int E0000(int IENTRY, int *maxdeg, double alt, double glat, double glon, double time, double *dec, double *dip, double *ti, double *gv)
 {
     static int maxord,i,icomp,n,m,j,D1,D2,D3,D4;
     static double c[13][13],cd[13][13],tc[13][13],dp[13][13],snorm[169],
@@ -234,7 +240,7 @@ INIT:
     if (wmm_lines[wmm_index] == NULL || sscanf(wmm_lines[wmm_index],"%lf%s",&epoch,model) < 2) 
     {
         fprintf(stderr, "Invalid header in model wmm_string in geomag.c\n");
-        exit(1);
+        return -1;
     }
 
 S3:
@@ -257,7 +263,7 @@ S3:
     {
         fprintf(stderr, "%d\n", wmm_index);
         fprintf(stderr, "Corrupt record in model wmm_string in geomag.c\n");
-        exit(1);
+        return -1;
     }
 
     if (m <= n)
@@ -299,7 +305,7 @@ S4:
     }
     k[1][1] = 0.0;
 
-    return;
+    return 0;
 
     /*************************************************************************/
 
@@ -438,21 +444,21 @@ S50:
         if (*gv > +180.0) *gv -= 360.0;
         if (*gv < -180.0) *gv += 360.0;
     }
-    return;
+    return 0;
 }
 
 /*************************************************************************/
 
-static void geomag_E0_init(int *maxdeg)
+static int geomag_E0_init(int *maxdeg)
 {
-    E0000(0,maxdeg,0.0,0.0,0.0,0.0,NULL,NULL,NULL,NULL);
+    return E0000(0,maxdeg,0.0,0.0,0.0,0.0,NULL,NULL,NULL,NULL);
 }
 
 /*************************************************************************/
 
-void geomag_calc(double alt, double glat, double glon, double time, double *dec, double *dip, double *ti, double *gv)
+int geomag_calc(double alt, double glat, double glon, double time, double *dec, double *dip, double *ti, double *gv)
 {
-    E0000(1,NULL,alt,glat,glon,time,dec,dip,ti,gv);
+    return E0000(1,NULL,alt,glat,glon,time,dec,dip,ti,gv);
 }
 
 /*************************************************************************/
